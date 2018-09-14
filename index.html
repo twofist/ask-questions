@@ -1,0 +1,114 @@
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>AMA</title>
+  <meta name="description" content="Ask me any question">
+  <meta name="author" content="twofist">
+
+  <link rel="stylesheet" href="css/styles.css?v=1.0">
+  <style>
+        * {
+            box-sizing: border-box;
+        }
+        div.Container {
+            float: left;
+            width: 33.33%;
+            padding: 50px;
+            background-color: #2C2F33;
+        }
+        h3{
+            font-family:"Arial", Times, serif;
+            color:rgba(255, 255, 255, 0.87);
+            background-color: rgb(72, 75, 80);
+            border-radius: 25px;
+            padding: 2%;
+        }
+        h2{
+            font-family:"Arial", Times, serif;
+            color:rgba(255, 255, 255, 0.87);
+            background-color: rgb(99, 104, 110);
+            border-radius: 25px;
+            padding: 2%;
+        }
+        div{
+            border-radius: 50px;
+            padding: 25px;
+            background-color: rgb(56, 59, 63);
+        }
+        body{
+            background-color: #23272A;
+        }
+        button{
+            border-radius: 15px;
+            width: 20%;
+            min-width: 20%;
+            border: 2px solid #99AAB5;
+            background-color:rgb(99, 104, 110);
+            font-family:"Courier New", Times, serif;
+            color:rgba(255, 255, 255, 0.87);
+        }
+        input{
+            border-radius: 5px;
+            border: 2px solid #99AAB5;
+            padding: 2%;
+            max-width: 100%;
+            background-color:rgb(72, 75, 80);
+            font-family:"Courier New", Times, serif;
+            color:rgba(255, 255, 255, 0.87);
+        }
+        .images{
+            text-align:center;
+        }
+        .img-main, .img-ghub{
+            border-radius: 50%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="Container" id="Answers">
+        <h2>
+            Answered Questions:
+        </h2>
+    </div>
+    <div class="Container" id="Intro">
+        <div class="images">
+            <a class="link" href="https://github.com/twofist">
+                <img class="img-main" alt="Profile Picture" src="images/weeb.png">
+                <img class="img-ghub" src="images/github.png" alt="Github" height="42" width="42">
+            </a>
+        </div>
+        <h2>
+            Ask me any Question
+            <br>
+            i will be notified on discord
+            <br>
+            and it will automaticly post it on my twitter once i answer it!
+        </h2>
+        <div class="form">
+            <h3>
+                   Name:
+            </h3>
+            <input class="nameForm" id="nameForm" type="text" name="Name" placeholder="Example: Anonymous">
+            <h3>
+                Question:
+            </h3>
+            <input class="questionForm" id="questionForm" size="40" type="text" name="Question" placeholder="Example: How are you today?">
+            <br>
+            <br>
+            <button class="sendQuestion" id="sendQuestion" onclick="processQuestion(this)">
+                <h3>
+                    Post!
+                </h3>
+            </button>
+        </div>
+    </div>
+    <div class="Container" id="Questions">
+        <h2>
+            Open Questions:
+        </h2>
+    </div>
+    <script src="src/index.js"></script>
+</body>
+</html>

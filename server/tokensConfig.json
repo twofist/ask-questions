@@ -1,0 +1,20 @@
+{
+    "login":{
+        "password": "base64string"
+    },
+    "discord":{
+        "token" : "discord bot token",
+        "id" : "your discord id"
+    },
+    "twitter":{
+        "consumer_key": "",
+        "consumer_secret": "",
+        "access_token_key": "",
+        "access_token_secret": ""
+    },
+    "mongoDB":{
+        "url": "mongodburl",
+        "name": "mongodbname",
+        "password": "string"
+    }
+}
