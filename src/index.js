@@ -88,6 +88,12 @@ function processQuestion(button){
     const nameForm = document.getElementById("nameForm").value;
     const questionForm = document.getElementById("questionForm").value;
 
+    if(questionForm.trim() === ""){
+        button.disabled = false;
+        button.innerHTML = "<h3>Please do ask a question</h3>"
+        return;
+    }
+
     const obj = {
         name:nameForm,
         question:questionForm
