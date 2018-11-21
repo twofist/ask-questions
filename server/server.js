@@ -1,16 +1,14 @@
+const Discord = require('discord.js');
+const tokens = require('./tokens.json');
+const fs = require('fs');
+const bot = new Discord.Client();
 const MongoClient = require('mongodb').MongoClient;
-const tokensConfig = require('./tokensConfig.json');
-let uniqueID = 0;
-const loggedInUser = {
-    ip: null,
-    socket: null,
-    loggedIn: false,
-};
-const collectionArray = [];
 
-const url = tokensConfig.mongoDB.url.replace("<PASSWORD>", tokensConfig.mongoDB.password);
+let collectionObj = {};
 
-const dbName = tokensConfig.mongoDB.name;
+const url = tokens.mongoDB.url.replace("<PASSWORD>", tokens.mongoDB.password);
+
+const dbName = tokens.mongoDB.name;
 
 let connectedDB;
 
@@ -26,232 +24,192 @@ MongoClient.connect(url, function(err, client) {
 
     });
 
-    getLastID(connectedDB);
     getAllDocuments(connectedDB);
 });
 
 function insertDocuments(db, callback) {
     const collection = db.collection('documents');
 
-    collection.insertOne({_id:'Question&Answers'}).catch();
+    collection.insertOne({_id:'discordMembers'}).catch();
 };
 
 function updateDocuments(db, obj, name, callback) {
     const collection = db.collection('documents');
-    collection.update({_id:'Question&Answers'},{$set:{[name]:obj}},{upsert:true}).catch()
+    collection.update({_id:'discordMembers'},{$set:{[name]:obj}},{upsert:true}).catch()
 };
 
-function getLastID(db){
+function getAllDocuments(db){
+    collectionObj = {};
     const collection = db.collection('documents');
-    const idArray=[];
+
     collection.findOne({}, function(err, result) {
         if(err){
             console.log(err);
         }
         for(key in result){
             if(key !== "_id"){
-                idArray.push(result[key]);
+                collectionObj[key] = result[key];
             }
         }
-        if(idArray.length > 0){
-            idArray.sort(function(a, b){
-                return b.id - a.id;
-            });
-            uniqueID = parseInt(idArray[0].id) + 1;
-        }
+        console.log("updated collectionObj");
     });
 }
 
-function getAllDocuments(db){
-    collectionArray.length = 0;
-    const collection = db.collection('documents');
+function getCollectionObj(db){
+    getAllDocuments(db);
 
-    collection.findOne({}, function(err, result) {
-        if(err){
-            console.log(err);
+    return collectionObj;
+}
+
+bot.on('ready', () => {
+  console.log(`Discord bot Logged in as ${bot.user.tag}!`);
+});
+
+bot.on("message", msg => {
+    if (msg.author.bot) return;
+    
+    const points = getCollectionObj(connectedDB);
+    console.log("opening:", points);
+	
+	
+	if (!points[msg.author.id]) {
+        points[msg.author.id] = newUser();
+		console.log("created new user");
+    }
+    
+    const timeOut = 1000 * 60 * 0.5;
+	if(timePast(points[msg.author.id].timeOfLastUpdate, timeOut)){
+        console.log("updating user");
+		addExp(msg.content, points[msg.author.id]);
+		levelUp(points[msg.author.id]);
+	}
+	
+    const prefix = "!";
+    if (msg.content.toLowerCase().startsWith(prefix + "setDescription".toLowerCase())){
+		const string = msg.content.split(" ")[1];
+		if(string.length < 100){
+			points[msg.author.id].description = string;
+			msg.reply("Description set!");
+		}else{
+			msg.reply("Description not set! description has to be less than 100 characters");
         }
-        for(key in result){
-            if(key !== "_id"){
-                collectionArray.push(result[key]);
-            }
-        }
-        console.log("updated collectionArray");
-    });
+		console.log("set description");
+	}
+	
+    console.log("saving file:", points[msg.author.id]);
+    updateDocuments(connectedDB, points[msg.author.id], msg.author.id);
+	
+	if (!msg.content.startsWith(prefix)) return;
+	
+	if (msg.content.toLowerCase().startsWith(prefix + "level".toLowerCase())) {
+        const embed = new Discord.RichEmbed()
+            .setAuthor(msg.author.username + "#" + msg.author.discriminator, msg.author.avatarURL)
+            .setColor('#0A599F')
+            .setTimestamp()
+            .addField('level:', `${points[msg.author.id].level}`, true)
+            .addField('experience:', `${points[msg.author.id].exp}`, true)
+            .addField('exptotal:', `${points[msg.author.id].exptotal}`, true)
+            .addField('attack:', `${points[msg.author.id].attack}`, true)
+            .addField('defense:', `${points[msg.author.id].defense}`, true)
+			.addField('description:', `${points[msg.author.id].description}`, true)
+        msg.channel.send({embed});
+		console.log("sent embed!")
+        return;
+	}
+});
+
+bot.login(tokens.discord.token);
+
+function newUser(){
+	return {
+            exp: 0,
+            exptotal: 0,
+            level: 1,
+            attack: 0,
+			defense: 1,
+			description: "no description set",
+			timeOfLastUpdate: new Date().getTime(),
+        };
+}
+
+function addExp(msg, user){
+	if (msg.length > 200) {
+		const exp = calcUserExp(msg.length, 20);
+        user.exp += exp;
+        user.exptotal += exp
+    } else {
+        const exp = calcUserExp(msg.length, 5);
+        user.exp += exp;
+        user.exptotal += exp
+    }
+}
+
+function levelUp(user){
+	const levelup = user.level * 20;
+    if (user.exp >= levelup) {
+        const exprest = user.exp - levelup;
+        user.exp = 0 + exprest;
+        user.level++;
+		if(rndNumBetween(0, 1)){
+			user.defense++;
+		}else{
+			user.attack++;
+		}
+    }
+}
+
+function timePast(pastTime, timeOut){
+	return (new Date().getTime() - pastTime < timeOut)?false:true;
+}
+
+function rndNumBetween(min,max){
+    return Math.floor(Math.random()*(max-min+1)+min);
+}
+
+function calcUserExp(length, amount){
+	return Math.floor((length / amount));
+}
+
+function respond(client){
+	const array = [];
+    const points = getCollectionObj(connectedDB);
+    console.log("reading json:", points);
+	bot.guilds.forEach(guild => guild.members.forEach((member) =>{
+		let user = points[member.user.id];
+		if(!user){
+            user = newUser();
+            console.log("creating dummy user");
+		}
+		array.push({
+        name: member.user.username,
+        image: member.user.avatarURL,
+		level: user.level,
+		attack: user.attack,
+		defense: user.defense,
+		description: user.description,
+    })
+	}));
+	sendDataToClient(client, array);
 }
 
 const WebSocket = require('ws');
-const PORT = process.env.PORT || 9090;
+const PORT = process.env.PORT || 6060;
 const wss = new WebSocket.Server({
     port: PORT
 });
 
-const LOGIN=0;
-const SENDQUESTION=1;
-const SENDANSWER=2;
-const REQUESTQUESTIONS=3
-const REQUESTANSWERS=4
-
-console.log("server started on port", PORT);
-
 wss.on('connection', function connection(ws, req) {
-    console.log("someone reached the server");
+    console.log("someone reached the server", getDateTime());
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     const user = {
         ip: ip,
         socket: ws,
-        loggedIn:false,
     };
 
     ws.on('message', function(data) {
-        data = data.split(";;;");
-        const dataMessage = parseInt(data);
-        switch(dataMessage){
-            case LOGIN: loginUser(user, data[1]);
-            break;
-            case SENDQUESTION: 
-                saveAndNotify(dataMessage, user, data);
-            break;
-            case SENDANSWER: 
-                saveAndTweet(dataMessage, user, data);
-            break;
-            case REQUESTQUESTIONS: 
-                sendDataToClient(dataMessage, user, data);
-            break;
-            case REQUESTANSWERS: 
-                sendDataToClient(dataMessage, user, data);
-            break;
-            default: 
-                console.log(user, dataMessage, data);
-        }
+        respond(user);
     });
 });
-
-function loginUser(user, data){
-    if(Buffer.from(data).toString('base64') === tokensConfig.login.password){
-        user.loggedIn = true;
-        loggedInUser.ip = user.ip;
-        loggedInUser.socket = user.socket;
-        loggedInUser.loggedIn = user.loggedIn;
-        console.log(loggedInUser.ip, "logged in");
-        loggedInUser.socket.send(LOGIN+";;;"+JSON.stringify({}));
-    }else{
-        console.log("wrong password", data);
-    }
-}
-
-function isLoggedIn(user){
-   return (user.ip === loggedInUser.ip && user.socket === loggedInUser.socket && user.loggedIn === loggedInUser.loggedIn)
-}
-
-function saveAndTweet(dataMessage, user, data){
-    if(!isLoggedIn(user)){
-        console.log("no access", user, data);
-        return;
-    }
-    console.log("question answered")
-    saveToDatabase(dataMessage, user, data[1]);
-    sendDataToTwitter(data[1]);
-}
-
-function getNewID(){
-    return uniqueID++;
-}
-
-function saveAndNotify(dataMessage, user, data){
-    const obj = saveToDatabase(dataMessage, user, data[1]);
-    notifyOwner(obj);
-}
-
-function saveToDatabase(type, user, data){
-    const parsedData = JSON.parse(data);
-    if(!parsedData.id){
-        parsedData.id = getNewID();
-    }
-    if(parsedData.name.trim() === ""){
-        parsedData.name = "Anonymous";
-    }
-    if(!parsedData.answer){
-        parsedData.answer = "null";
-    }
-    if(!parsedData.dateOfAnswer && type === SENDANSWER){
-        parsedData.dateOfAnswer = getDateTime();
-    }else{
-        parsedData.dateOfAnswer = "null";
-    }
-    if(!parsedData.dateOfQuestion && type === SENDQUESTION){
-        parsedData.dateOfQuestion = getDateTime();
-    }
-    if(!parsedData.dateOfQuestion && type === SENDANSWER){
-        for(let ii = 0; ii < collectionArray.length; ii++){
-            if(collectionArray[ii].id === parsedData.id){
-                parsedData.dateOfQuestion = collectionArray.dateOfQuestion;
-            }
-        }
-    }
-
-    const obj={
-        id: parsedData.id,
-        name: parsedData.name,
-        question: parsedData.question,
-        answer: parsedData.answer,
-        dateOfQuestion: parsedData.dateOfQuestion,
-        dateOfAnswer: parsedData.dateOfAnswer,
-    };
-    
-    updateDocuments(connectedDB, obj, obj.id);
-    setTimeout(()=>{
-        getAllDocuments(connectedDB);
-    }, 5000)
-
-    return obj;
-}
-
-function sendDataToClient(type, user){
-    let data = [];
-    if(type === REQUESTANSWERS){
-        data = getAnswers();
-    }else if(type === REQUESTQUESTIONS){
-        data = getQuestions();
-    }else{
-        console.log("type not found", type)
-    }
-    
-    user.socket.send(type+";;;"+JSON.stringify(data));
-}
-
-function getAnswers(){
-    const array = collectionArray;
-    const answerArray = [];
-    const arrayLength = array.length;
-    for(let ii = 0; ii < arrayLength; ii++){
-        if(array[ii].answer !== "null"){
-            answerArray.push(array[ii]);
-        }
-    }
-
-    answerArray.sort(function(a, b){
-        return b.id - a.id;
-    });
-
-    return answerArray;
-}
-
-function getQuestions(){
-    const array = collectionArray;
-    const questionArray = [];
-    const arrayLength = array.length;
-    for(let ii = 0; ii < arrayLength; ii++){
-        if(array[ii].answer === "null"){
-            questionArray.push(array[ii]);
-        }
-    }
-
-    questionArray.sort(function(a, b){
-        return b.id - a.id;
-    });
-
-    return questionArray;
-}
 
 function getDateTime() {
     const date = new Date();
@@ -276,42 +234,7 @@ function getDateTime() {
     return year + ":" + month + ":" + day + ":" + hour + ":" + min + ":" + sec;
 }
 
-const Twitter = require('twitter');
-
-const twitter = new Twitter(tokensConfig.twitter);
-
-const twitterQueue = [];
-
-function sendDataToTwitter(unparsedData){
-    const data = JSON.parse(unparsedData);
-    const toSend = data.name + ": " + data.question + " -> " + data.answer;
-    twitterQueue.unshift(toSend);
-}
-
-setInterval(()=>{ 
-    if(twitterQueue.length > 0){
-        const toSend = twitterQueue.pop();
-        twitter.post('statuses/update', {status: toSend},  function(error, tweet, response){
-            if(error){
-              console.log(error);
-            }
-            console.log("tweet send");
-        });
-    }else{
-        console.log("nothing to tweet")
-    }
-}, 60000);
-
-const Discord = require('discord.js');
-const client = new Discord.Client();
-
-client.on('ready', () => {
-  console.log(`Discord bot Logged in as ${client.user.tag}!`);
-});
-
-client.login(tokensConfig.discord.token);
-
-function notifyOwner(data){
-    const toSend = data.id+"->"+data.name + ": " + data.question;
-    client.users.get(tokensConfig.discord.id).send(toSend);
+function sendDataToClient(user, data){
+	console.log("sending", data)
+    user.socket.send(JSON.stringify(data));
 }

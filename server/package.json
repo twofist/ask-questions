@@ -1,12 +1,11 @@
 {
-  "name": "ask-questions",
+  "name": "get-members",
   "version": "1.0.0",
-  "description": "server to handle incoming questions and answers and notifies the owner and once answered it will tweet it out",
+  "description": "server to member request",
   "main": "server.js",
   "dependencies": {
     "discord.js": "^11.4.2",
-    "mongodb": "^3.1.4",
-    "twitter": "^1.7.1",
+    "mongodb": "^3.1.10",
     "ws": "^6.0.0"
   },
   "devDependencies": {},
@@ -15,8 +14,8 @@
     "start": "node server.js"
   },
   "keywords": [
-    "ask",
-    "questions"
+    "get",
+    "members"
   ],
   "author": "twofist",
   "license": "MIT"
